@@ -18,3 +18,10 @@ $(LIB): $(LIB_SOURCE)
 
 clean:
 	rm $(LIB) $(EXECUTABLES)
+
+.PHONY: install
+install: $(LIB)
+	mkdir -p $(PREFIX)/lib
+	mkdir -p $(PREFIX)/include
+	cp $(LIB) $(PREFIX)/lib/
+	cp $(DIR)/include/*.h $(PREFIX)/include/
