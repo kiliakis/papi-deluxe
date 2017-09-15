@@ -1,5 +1,4 @@
 #include "PAPIProf.h"
-// #include <chrono>
 #include <algorithm>
 #include <cmath>
 #include <stack>
@@ -232,9 +231,6 @@ PAPIProf::PAPIProf(vector<string> metrics,
     if (metrics.size() != 0)
         add_metrics(metrics);
     add_events(events);
-
-    // papi_start(_eventSet);
-
 }
 
 void PAPIProf::add_events(vector<string> events)
@@ -249,7 +245,6 @@ void PAPIProf::add_events(vector<string> events)
     }
     if (new_events.size() > 0) {
         papi_reset(_eventSet);
-
         // long long *eventValues = new long long[_events_set.size()];
         // papi_stop(_eventSet, eventValues);
         papi_add_events(_eventSet, new_events);
@@ -284,12 +279,8 @@ void PAPIProf::start_counters(string funcname,
 {
     if (metrics.size()) add_metrics(metrics);
     add_events(events);
-
-    // _key = funcname;
     _key_stack.push(funcname);
 
-    // if (_events_set.size())
-    //     papi_start(_eventSet);
     if (_events_set.size()) {
         long long *eventValues = new long long[_events_set.size()];
         papi_read(_eventSet, eventValues);
@@ -297,8 +288,6 @@ void PAPIProf::start_counters(string funcname,
 
     }
 
-    // _ts = chrono::system_clock::now();
-    // _ts_stack.push(chrono::system_clock::now());
     _ts_stack.push(PAPI_get_real_usec());
 
 }
@@ -307,12 +296,8 @@ void PAPIProf::start_counters(string funcname,
 void PAPIProf::stop_counters()
 {
     long long *eventValues = new long long[_events_set.size()];
-    // if (_events_set.size()){
-    //     papi_stop(_eventSet, eventValues);
-    // }
 
     if (_events_set.size()) {
-        // papi_stop(_eventSet, eventValues);
         papi_read(_eventSet, eventValues);
         long long *prevValues = _eventValues.top(); _eventValues.pop();
         for (int i = 0; i < (int)_events_set.size(); i++)
@@ -321,8 +306,6 @@ void PAPIProf::stop_counters()
 
     long long te = PAPI_get_real_usec();
     double msec = (double) (te - _ts_stack.top()) / 1000.0; _ts_stack.pop();
-    // chrono::time_point<chrono::high_resolution_clock> te = chrono::system_clock::now();
-    // chrono::duration<double> elapsed_time = te - _ts_stack.top(); _ts_stack.pop();
 
     auto key = _key_stack.top(); _key_stack.pop();
     _counters[key + "\ttime(ms)"].push_back(msec);
