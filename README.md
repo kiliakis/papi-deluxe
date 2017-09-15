@@ -6,3 +6,5 @@ papi-deluxe
 ## Known bugs
 * Can't add metric or event in the middle of a start - stop counters region
 * No function that removes a metric
+* Doesn\t work well on PCA and kmeans
+* Need a proper destructor

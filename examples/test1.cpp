@@ -5,7 +5,7 @@
 
 int main(int argc, char const *argv[])
 {
-    auto profiler = PAPIProf({"IPC", "CPI"});
+    auto profiler = PAPIProf({"IPC", "CPI", "MEMORY_BOUND%", "CORE_BOUND%"});
     profiler.start_counters("main");
 
     int loops = 1000;

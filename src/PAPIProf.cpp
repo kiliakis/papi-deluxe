@@ -194,7 +194,7 @@ double evaluate(vector<string> equation,
         auto symbol = equation.front();
         equation.erase(equation.begin());
         try {
-            long double num = stold(symbol);
+            double num = stod(symbol);
             stack.push(num);
         } catch (exception& e) {
             if (operators.find(symbol) != operators.end()) {
@@ -231,6 +231,8 @@ PAPIProf::PAPIProf(vector<string> metrics,
     if (metrics.size() != 0)
         add_metrics(metrics);
     add_events(events);
+    papi_start(_eventSet);
+
 }
 
 void PAPIProf::add_events(vector<string> events)
@@ -243,13 +245,13 @@ void PAPIProf::add_events(vector<string> events)
             _events_names.push_back(e);
         }
     }
-    if (new_events.size() > 0) {
-        papi_reset(_eventSet);
-        // long long *eventValues = new long long[_events_set.size()];
-        // papi_stop(_eventSet, eventValues);
-        papi_add_events(_eventSet, new_events);
-        papi_start(_eventSet);
-    }
+    papi_add_events(_eventSet, new_events);
+    // if (new_events.size() > 0) {
+    //     papi_reset(_eventSet);
+    //     // long long *eventValues = new long long[_events_set.size()];
+    //     // papi_stop(_eventSet, eventValues);
+    //     papi_start(_eventSet);
+    // }
 }
 
 void PAPIProf::remove_events(std::vector<std::string> events)
@@ -263,13 +265,13 @@ void PAPIProf::remove_events(std::vector<std::string> events)
             removed_events.push_back(e);
         }
     }
-    if (removed_events.size() > 0) {
-        papi_reset(_eventSet);
-        // long long *eventValues = new long long[_events_set.size()];
-        // papi_stop(_eventSet, eventValues);
-        papi_remove_events(_eventSet, removed_events);
-        papi_start(_eventSet);
-    }
+    papi_remove_events(_eventSet, removed_events);
+    // if (removed_events.size() > 0) {
+    //     papi_reset(_eventSet);
+    //     // long long *eventValues = new long long[_events_set.size()];
+    //     // papi_stop(_eventSet, eventValues);
+    //     papi_start(_eventSet);
+    // }
 }
 
 
@@ -327,18 +329,25 @@ void PAPIProf::add_metrics(vector<string> metrics, bool helper)
 {
     vector<string> new_metrics;
     for (auto m : metrics) {
-        auto pair = _metrics.insert(m);
-        if (pair.second) new_metrics.push_back(m);
+        if (_metrics.find(m) == _metrics.end())
+            new_metrics.push_back(m);
+        // auto pair = _metrics.insert(m);
+        // if (pair.second) new_metrics.push_back(m);
     }
     vector<string> events;
     set<string> operators = {"/", "*", "-", "+"};
     for (auto m : new_metrics) {
         auto equation = gPresetMetrics[m];
         for (auto symbol : equation) {
-            if (gPresetMetrics.find(symbol) != gPresetMetrics.end()) {
-                add_metrics({symbol}, true);
-            } else if (operators.find(symbol) == operators.end()) {
-                events.push_back(symbol);
+            try {
+                stod(symbol);
+            } catch (exception& e) {
+                // printf("SYmbol %s\n", symbol.c_str());
+                if (gPresetMetrics.find(symbol) != gPresetMetrics.end()) {
+                    add_metrics({symbol}, true);
+                } else if (operators.find(symbol) == operators.end()) {
+                    events.push_back(symbol);
+                }
             }
         }
     }
@@ -352,7 +361,7 @@ void PAPIProf::add_metrics(vector<string> metrics, bool helper)
 
 void PAPIProf::report_metrics()
 {
-    fprintf(stderr, "\nMetrics Report Start\n");
+    fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
     set<string> checkedFunctions;
     for (auto &kv : _counters) {
