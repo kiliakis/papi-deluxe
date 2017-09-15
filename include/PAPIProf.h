@@ -7,7 +7,7 @@
 #include <string>
 #include <set>
 #include <unordered_map>
-#include <chrono>
+// #include <chrono>
 #include <stack>
 
 int papi_init(int *eventSet);
@@ -30,7 +30,8 @@ private:
     int _eventSet;
     // std::string _key; // could be even better with a stack of strings
     // std::chrono::time_point<std::chrono::high_resolution_clock> _ts;
-    std::stack<std::chrono::time_point<std::chrono::high_resolution_clock>> _ts_stack;
+    // std::stack<std::chrono::time_point<std::chrono::high_resolution_clock>> _ts_stack;
+    std::stack<long long> _ts_stack;
     std::stack<std::string> _key_stack;
     std::stack<long long *> _eventValues;
 public:

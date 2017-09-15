@@ -1,5 +1,5 @@
 #include "PAPIProf.h"
-#include <chrono>
+// #include <chrono>
 #include <algorithm>
 #include <cmath>
 #include <stack>
@@ -249,7 +249,7 @@ void PAPIProf::add_events(vector<string> events)
     }
     if (new_events.size() > 0) {
         papi_reset(_eventSet);
-        
+
         // long long *eventValues = new long long[_events_set.size()];
         // papi_stop(_eventSet, eventValues);
         papi_add_events(_eventSet, new_events);
@@ -298,7 +298,8 @@ void PAPIProf::start_counters(string funcname,
     }
 
     // _ts = chrono::system_clock::now();
-    _ts_stack.push(chrono::system_clock::now());
+    // _ts_stack.push(chrono::system_clock::now());
+    _ts_stack.push(PAPI_get_real_usec());
 
 }
 
@@ -318,12 +319,13 @@ void PAPIProf::stop_counters()
             eventValues[i] = eventValues[i] - prevValues[i];
     }
 
-
-    chrono::time_point<chrono::high_resolution_clock> te = chrono::system_clock::now();
-    chrono::duration<double> elapsed_time = te - _ts_stack.top(); _ts_stack.pop();
+    long long te = PAPI_get_real_usec();
+    double msec = (double) (te - _ts_stack.top()) / 1000.0; _ts_stack.pop();
+    // chrono::time_point<chrono::high_resolution_clock> te = chrono::system_clock::now();
+    // chrono::duration<double> elapsed_time = te - _ts_stack.top(); _ts_stack.pop();
 
     auto key = _key_stack.top(); _key_stack.pop();
-    _counters[key + "\ttime(ms)"].push_back(1000 * elapsed_time.count());
+    _counters[key + "\ttime(ms)"].push_back(msec);
 
     for (int i = 0; i < (int)_events_names.size(); ++i) {
         _counters[key + "\t" + _events_names[i]].push_back((double)eventValues[i]);
