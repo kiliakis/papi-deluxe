@@ -3,6 +3,23 @@
 #include <stdlib.h>     /* atoi */
 #include <random>
 
+
+PAPIProf profiler = PAPIProf({"IPC", "CPI"});
+
+double foo(const int *a, const int *b, const int points)
+{
+    profiler.start_counters("foo");
+    double acc = 0.0;
+    for (int i = 0; i < points; ++i)
+    {
+        acc += (double) (a[i] - b[i]) / (a[i] + b[i]);
+    }
+    profiler.stop_counters();
+
+    return acc;
+}
+
+
 int main(int argc, char const *argv[])
 {
     int loops = 1000;
@@ -30,13 +47,14 @@ int main(int argc, char const *argv[])
     double acc = 0;
     for (int i = 0; i < loops; ++i)
     {
-        for (int j = 0; j < points; ++j)
-        {
-            acc += (double)(a[i] - b[i]) / (a[i] + b[i]);
-        }
+        acc += foo(a, b, points);
     }
 
     printf("Acc is: %lf\n", acc);
+
+    profiler.report_timing();
+    profiler.report_counters();
+    profiler.report_metrics();
 
 
     return 0;

@@ -24,11 +24,11 @@ private:
     std::set<std::string> _events_set;
     std::vector<std::string> _events_names;
     std::set<std::string> _metrics;
-    std::unordered_map<std::string, std::vector<long long>> _counters;
+    std::unordered_map<std::string, std::vector<double>> _counters;
     int _eventSet;
     std::string _key; // could be even better with a stack of strings
     std::chrono::time_point<std::chrono::high_resolution_clock> _ts;
-
+    
 public:
     PAPIProf(std::vector<std::string> metrics = std::vector<std::string>(),
              std::vector<std::string> events = std::vector<std::string>());

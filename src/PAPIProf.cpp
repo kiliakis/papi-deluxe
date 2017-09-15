@@ -151,13 +151,13 @@ int papi_destroy(int *eventSet)
 }
 
 
-double get_mean(vector<long long> &v) {
-    return accumulate(v.begin(), v.end(), 0.0) / v.size();
+double get_mean(vector<double> &v) {
+    return accumulate(v.begin(), v.end(), (long double)0.0) / v.size();
 }
 
-double get_std(vector<long long> &v) {
+double get_std(vector<double> &v) {
     auto m = get_mean(v);
-    double acc = 0;
+    long double acc = 0;
     for (auto i : v) {
         acc += (i - m) * (i - m);
     }
@@ -167,17 +167,17 @@ double get_std(vector<long long> &v) {
 
 double evaluate(vector<string> equation,
                 string &funcname,
-                unordered_map<string, vector<long long>> &counters,
+                unordered_map <string, vector<double>> &counters,
                 unordered_map<string, vector<string>> &preset_metrics)
 {
-    stack<double> stack;
+    stack<long double> stack;
     set<string> operators = {"/", "*", "-", "+"};
 
     while (equation.size()) {
         auto symbol = equation.front();
         equation.erase(equation.begin());
         try {
-            double num = stod(symbol);
+            long double num = stold(symbol);
             stack.push(num);
         } catch (exception& e) {
             if (operators.find(symbol) != operators.end()) {
@@ -189,7 +189,7 @@ double evaluate(vector<string> equation,
                 else if (symbol == "/") stack.push(op1 / op2);
             } else if (counters.find(funcname + '\t' + symbol) != counters.end()) {
                 auto a = counters[funcname + '\t' + symbol];
-                stack.push(accumulate(a.begin(), a.end(), 0));
+                stack.push(accumulate(a.begin(), a.end(), (long double)0.0));
             } else if (preset_metrics.find(symbol) != preset_metrics.end()) {
                 auto a = preset_metrics[symbol];
                 equation.insert(equation.begin(), a.begin(), a.end());
@@ -204,7 +204,7 @@ double evaluate(vector<string> equation,
         fprintf(stderr, "Something went wrong with the metric evaluation\n");
         return numeric_limits<double>::quiet_NaN();
     }
-    return stack.top();
+    return (double) stack.top();
 }
 
 PAPIProf::PAPIProf(vector<string> metrics,
@@ -258,7 +258,7 @@ void PAPIProf::stop_counters()
     _counters[_key + "\ttime(ms)"].push_back(1000 * elapsed_time.count());
 
     for (int i = 0; i < (int)_events_names.size(); ++i) {
-        _counters[_key + "\t" + _events_names[i]].push_back(eventValues[i]);
+        _counters[_key + "\t" + _events_names[i]].push_back((double)eventValues[i]);
     }
 }
 
@@ -306,7 +306,7 @@ void PAPIProf::report_metrics()
             auto equation = gPresetMetrics[metric_name];
             auto result = evaluate(equation, funcname,
                                    _counters, gPresetMetrics);
-            fprintf(stderr, "%s\t%s\t%.3f\t%d\t%d\n",
+            fprintf(stderr, "%s\t%s\t%.3lf\t%d\t%d\n",
                     funcname.c_str(), metric_name.c_str(), result, 0, 0);
         }
     }
@@ -322,10 +322,10 @@ void PAPIProf::report_counters()
     for (auto &kv : _counters) {
         if (kv.first.find("time(ms)") == string::npos) {
             auto mean = get_mean(kv.second);
-            auto sum = mean * kv.second.size();
+            long double sum = mean * kv.second.size();
             auto std = get_std(kv.second);
-            fprintf(stderr, "%s\t%.0f\t%.0lf\t%lu\n",
-                    kv.first.c_str(), sum, 100 * kv.second.size() * std / sum,
+            fprintf(stderr, "%s\t%.0Lf\t%.0Lf\t%lu\n",
+                    kv.first.c_str(), sum, 100. * kv.second.size() * std / sum,
                     kv.second.size());
 
         }
@@ -342,8 +342,8 @@ void PAPIProf::report_timing() {
         if (kv.first.find("time(ms)") != string::npos) {
             auto mean = get_mean(kv.second);
             auto std = get_std(kv.second);
-            fprintf(stderr, "%s\t%.3f\t%.2f\t%lu\n",
-                    kv.first.c_str(), mean, 100 * std / mean, kv.second.size());
+            fprintf(stderr, "%s\t%.3lf\t%.2lf\t%lu\n",
+                    kv.first.c_str(), mean, 100. * std / mean, kv.second.size());
 
         }
     }
