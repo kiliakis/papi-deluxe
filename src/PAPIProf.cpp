@@ -4,8 +4,12 @@
 #include <cmath>
 #include <stack>
 #include <limits>
+#include "metrics.h"
 
 using namespace std;
+using namespace metrics;
+// unordered_map<string, vector<string>> gPresetMetrics;
+
 
 int papi_init(int *eventSet)
 {
@@ -271,10 +275,10 @@ void PAPIProf::add_metrics(std::vector<std::string> metrics, bool helper)
     vector<string> events;
     set<string> operators = {"/", "*", "-", "+"};
     for (auto m : new_metrics) {
-        auto equation = _preset_metrics[m];
+        auto equation = gPresetMetrics[m];
         for (auto symbol : equation) {
-            auto it = _preset_metrics.find(symbol);
-            if (it != _preset_metrics.end()) {
+            auto it = gPresetMetrics.find(symbol);
+            if (it != gPresetMetrics.end()) {
                 add_metrics({symbol}, true);
             } else if (operators.find(symbol) != operators.end()) {
                 events.push_back(symbol);

@@ -1,9 +1,10 @@
+DIR=$(shell pwd)
 CC=g++
 CFLAGS=-Wall -std=c++11
 LDFLAGS=-fPIC -shared -lpapi
-INCLUDE=-I/afs/cern.ch/work/k/kiliakis/install/include
-SOURCES=PAPIProf.cpp
-SHARED_LIBRARY=PAPIProf.so
+INCLUDE=-I$(DIR)/include
+SOURCES=$(DIR)/src/PAPIProf.cpp
+SHARED_LIBRARY=$(DIR)/lib/PAPIProf.so
 # OBJECTS=$(SOURCES:.cpp=.o)
 # EXECUTABLE=hello
 
@@ -19,4 +20,4 @@ $(SHARED_LIBRARY): $(SOURCES)
 	$(CC) $(CFLAGS) $(INCLUDE) $(LDFLAGS) $< -o $@
 
 clean:
-	rm *.so *.o
+	rm $(DIR)/lib/*.so
