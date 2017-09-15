@@ -3,21 +3,18 @@ CC=g++
 CFLAGS=-Wall -std=c++11
 LDFLAGS=-fPIC -shared -lpapi
 INCLUDE=-I$(DIR)/include
-SOURCES=$(DIR)/src/PAPIProf.cpp
-SHARED_LIBRARY=$(DIR)/lib/PAPIProf.so
-# OBJECTS=$(SOURCES:.cpp=.o)
-# EXECUTABLE=hello
+LIB_SOURCE=$(DIR)/src/PAPIProf.cpp
+LIB=$(DIR)/lib/libpapiprof.so
+EXAMPLES=$(wildcard $(DIR)/examples/*.cpp)
+EXECUTABLES=$(patsubst %.cpp, %, $(EXAMPLES))
 
-all: $(SHARED_LIBRARY)
+all: $(LIB) $(EXECUTABLES)
     
-# $(EXECUTABLE): $(OBJECTS) 
-#     $(CC) $(LDFLAGS) $(OBJECTS) -o $@
+%: %.cpp
+	$(CC) $(CFLAGS) $(INCLUDE) -L$(DIR)/lib -Wl,-rpath=$(DIR)/lib -o $@ $^ -lpapiprof
 
-# .cpp.o:
-#     $(CC) $(CFLAGS) $< -o $@
-
-$(SHARED_LIBRARY): $(SOURCES)
+$(LIB): $(LIB_SOURCE)
 	$(CC) $(CFLAGS) $(INCLUDE) $(LDFLAGS) $< -o $@
 
 clean:
-	rm $(DIR)/lib/*.so
+	rm $(LIB) $(EXECUTABLES)

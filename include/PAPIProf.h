@@ -32,7 +32,7 @@ private:
 public:
     PAPIProf(std::vector<std::string> metrics = std::vector<std::string>(),
              std::vector<std::string> events = std::vector<std::string>());
-    ~PAPIProf();
+    ~PAPIProf() {};
     void add_events(std::vector<std::string> events);
     void start_counters(std::string funcname,
                         std::vector<std::string> metrics = std::vector<std::string>(),

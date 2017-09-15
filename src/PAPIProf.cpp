@@ -8,8 +8,6 @@
 
 using namespace std;
 using namespace metrics;
-// unordered_map<string, vector<string>> gPresetMetrics;
-
 
 int papi_init(int *eventSet)
 {
@@ -68,9 +66,11 @@ int papi_init(int *eventSet)
 }
 
 
-int papi_add_events(int eventSet, vector<std::string> eventNames)
+int papi_add_events(int eventSet, vector<string> eventNames)
 {
     int retval;
+    // fprintf(stderr, "In papi_add_events\n");
+
     for (auto e : eventNames) {
         char* c_string = const_cast<char*>(e.c_str());
         retval = PAPI_add_named_event(eventSet, c_string);
@@ -80,6 +80,7 @@ int papi_add_events(int eventSet, vector<std::string> eventNames)
             PAPI_perror(PAPI_strerror(retval));
             return retval;
         }
+        // fprintf(stderr, "Event %s added\n", c_string);
     }
     return 0;
 }
@@ -160,13 +161,14 @@ double get_std(vector<long long> &v) {
     for (auto i : v) {
         acc += (i - m) * (i - m);
     }
-    return std::sqrt(acc / (v.size()));
+    return sqrt(acc / (v.size()));
 }
 
 
-double calculate(vector<string> equation,
-                 unordered_map<string, vector<long long>> &counters,
-                 unordered_map<string, vector<string>> &preset_metrics)
+double evaluate(vector<string> equation,
+                string &funcname,
+                unordered_map<string, vector<long long>> &counters,
+                unordered_map<string, vector<string>> &preset_metrics)
 {
     stack<double> stack;
     set<string> operators = {"/", "*", "-", "+"};
@@ -177,7 +179,7 @@ double calculate(vector<string> equation,
         try {
             double num = stod(symbol);
             stack.push(num);
-        } catch (std::exception& e) {
+        } catch (exception& e) {
             if (operators.find(symbol) != operators.end()) {
                 auto op2 = stack.top(); stack.pop();
                 auto op1 = stack.top(); stack.pop();
@@ -185,8 +187,8 @@ double calculate(vector<string> equation,
                 else if (symbol == "-") stack.push(op1 - op2);
                 else if (symbol == "*") stack.push(op1 * op2);
                 else if (symbol == "/") stack.push(op1 / op2);
-            } else if (counters.find(symbol) != counters.end()) {
-                auto a = counters[symbol];
+            } else if (counters.find(funcname + '\t' + symbol) != counters.end()) {
+                auto a = counters[funcname + '\t' + symbol];
                 stack.push(accumulate(a.begin(), a.end(), 0));
             } else if (preset_metrics.find(symbol) != preset_metrics.end()) {
                 auto a = preset_metrics[symbol];
@@ -211,11 +213,10 @@ PAPIProf::PAPIProf(vector<string> metrics,
     papi_init(&_eventSet);
     if (metrics.size() != 0)
         add_metrics(metrics);
-    if (_events_set.size() != 0)
-        add_events(events);
+    add_events(events);
 }
 
-void PAPIProf::add_events(std::vector<std::string> events)
+void PAPIProf::add_events(vector<string> events)
 {
     vector<string> new_events;
     for (auto e : events) {
@@ -229,12 +230,12 @@ void PAPIProf::add_events(std::vector<std::string> events)
 }
 
 
-void PAPIProf::start_counters(std::string funcname,
-                              std::vector<std::string> metrics,
-                              std::vector<std::string> events)
+void PAPIProf::start_counters(string funcname,
+                              vector<string> metrics,
+                              vector<string> events)
 {
     if (metrics.size()) add_metrics(metrics);
-    if (events.size()) add_events(events);
+    add_events(events);
 
     _key = funcname;
 
@@ -252,7 +253,7 @@ void PAPIProf::stop_counters()
     if (_events_set.size())
         papi_stop(_eventSet, eventValues);
 
-    auto elapsed_time = chrono::system_clock::now() - _ts;
+    chrono::duration<double> elapsed_time = chrono::system_clock::now() - _ts;
 
     _counters[_key + "\ttime(ms)"].push_back(1000 * elapsed_time.count());
 
@@ -265,7 +266,7 @@ void PAPIProf::stop_counters()
 void PAPIProf::clear_counters() {}
 
 
-void PAPIProf::add_metrics(std::vector<std::string> metrics, bool helper)
+void PAPIProf::add_metrics(vector<string> metrics, bool helper)
 {
     vector<string> new_metrics;
     for (auto m : metrics) {
@@ -277,10 +278,9 @@ void PAPIProf::add_metrics(std::vector<std::string> metrics, bool helper)
     for (auto m : new_metrics) {
         auto equation = gPresetMetrics[m];
         for (auto symbol : equation) {
-            auto it = gPresetMetrics.find(symbol);
-            if (it != gPresetMetrics.end()) {
+            if (gPresetMetrics.find(symbol) != gPresetMetrics.end()) {
                 add_metrics({symbol}, true);
-            } else if (operators.find(symbol) != operators.end()) {
+            } else if (operators.find(symbol) == operators.end()) {
                 events.push_back(symbol);
             }
         }
@@ -289,23 +289,34 @@ void PAPIProf::add_metrics(std::vector<std::string> metrics, bool helper)
         _metrics.insert(new_metrics.begin(), new_metrics.end());
 
     add_events(events);
-    // vector<string> new_events;
-
-    // for (auto e : events) {
-    //     auto pair = _events.insert(e);
-    //     if (pair.second) new_events.push_back(e);
-    // }
-    // if (new_events.size() != 0)
-    //     papi_add_events(_eventSet, new_events);
 
 }
 
 
-void PAPIProf::report_metrics() {}
+void PAPIProf::report_metrics()
+{
+    fprintf(stderr, "\nMetrics Report Start\n");
+    fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
+    set<string> checkedFunctions;
+    for (auto &kv : _counters) {
+        auto funcname = kv.first.substr(0, kv.first.find('\t'));
+        if (checkedFunctions.insert(funcname).second == false)
+            continue;
+        for (auto &metric_name : _metrics) {
+            auto equation = gPresetMetrics[metric_name];
+            auto result = evaluate(equation, funcname,
+                                   _counters, gPresetMetrics);
+            fprintf(stderr, "%s\t%s\t%.3f\t%d\t%d\n",
+                    funcname.c_str(), metric_name.c_str(), result, 0, 0);
+        }
+    }
+
+    fprintf(stderr, "\nCounters Report End\n");
+}
 
 void PAPIProf::report_counters()
 {
-    fprintf(stderr, "\n Counters Report Start\n");
+    fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
 
     for (auto &kv : _counters) {
@@ -313,20 +324,18 @@ void PAPIProf::report_counters()
             auto mean = get_mean(kv.second);
             auto sum = mean * kv.second.size();
             auto std = get_std(kv.second);
-            fprintf(stderr, "%s\t%.3f\t%.2f\t%lu\n",
+            fprintf(stderr, "%s\t%.0f\t%.0lf\t%lu\n",
                     kv.first.c_str(), sum, 100 * kv.second.size() * std / sum,
                     kv.second.size());
 
         }
     }
-
-
-    fprintf(stderr, "\n Counters Report End\n");
+    fprintf(stderr, "\nCounters Report End\n");
 }
 
 
 void PAPIProf::report_timing() {
-    fprintf(stderr, "\n Timing Report Start\n");
+    fprintf(stderr, "\nTiming Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
 
     for (auto &kv : _counters) {
@@ -338,8 +347,6 @@ void PAPIProf::report_timing() {
 
         }
     }
-
-
-    fprintf(stderr, "\n Timing Report End\n");
+    fprintf(stderr, "\nTiming Report End\n");
 
 }
