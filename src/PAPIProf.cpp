@@ -71,7 +71,7 @@ int papi_add_events(int eventSet, vector<string> eventNames)
     int retval;
     // fprintf(stderr, "In papi_add_events\n");
 
-    for (auto e : eventNames) {
+    for (auto &e : eventNames) {
         char* c_string = const_cast<char*>(e.c_str());
         retval = PAPI_add_named_event(eventSet, c_string);
         if (retval != PAPI_OK) {
@@ -83,6 +83,24 @@ int papi_add_events(int eventSet, vector<string> eventNames)
         // fprintf(stderr, "Event %s added\n", c_string);
     }
     return 0;
+}
+
+
+int papi_remove_events(int eventSet, vector<string> eventNames)
+{
+    int retval;
+
+    for (auto &e : eventNames) {
+        char *c_string = const_cast<char *>(e.c_str());
+        retval = PAPI_remove_named_event(eventSet, c_string);
+        if (retval != PAPI_OK) {
+            fprintf(stderr, "PAPI event %s was not removed!\n", c_string);
+            PAPI_perror(PAPI_strerror(retval));
+            return retval;
+        }
+    }
+    return 0;
+
 }
 
 
@@ -214,6 +232,9 @@ PAPIProf::PAPIProf(vector<string> metrics,
     if (metrics.size() != 0)
         add_metrics(metrics);
     add_events(events);
+
+    // papi_start(_eventSet);
+
 }
 
 void PAPIProf::add_events(vector<string> events)
@@ -226,7 +247,34 @@ void PAPIProf::add_events(vector<string> events)
             _events_names.push_back(e);
         }
     }
-    papi_add_events(_eventSet, new_events);
+    if (new_events.size() > 0) {
+        papi_reset(_eventSet);
+        
+        // long long *eventValues = new long long[_events_set.size()];
+        // papi_stop(_eventSet, eventValues);
+        papi_add_events(_eventSet, new_events);
+        papi_start(_eventSet);
+    }
+}
+
+void PAPIProf::remove_events(std::vector<std::string> events)
+{
+    vector<string> removed_events;
+    for (auto e : events) {
+        if (_events_set.find(e) != _events_set.end()) {
+            _events_set.erase(e);
+            auto it = find(_events_names.begin(), _events_names.end(), e);
+            _events_names.erase(it);
+            removed_events.push_back(e);
+        }
+    }
+    if (removed_events.size() > 0) {
+        papi_reset(_eventSet);
+        // long long *eventValues = new long long[_events_set.size()];
+        // papi_stop(_eventSet, eventValues);
+        papi_remove_events(_eventSet, removed_events);
+        papi_start(_eventSet);
+    }
 }
 
 
@@ -237,12 +285,20 @@ void PAPIProf::start_counters(string funcname,
     if (metrics.size()) add_metrics(metrics);
     add_events(events);
 
-    _key = funcname;
+    // _key = funcname;
+    _key_stack.push(funcname);
 
-    if (_events_set.size())
-        papi_start(_eventSet);
+    // if (_events_set.size())
+    //     papi_start(_eventSet);
+    if (_events_set.size()) {
+        long long *eventValues = new long long[_events_set.size()];
+        papi_read(_eventSet, eventValues);
+        _eventValues.push(eventValues);
 
-    _ts = chrono::system_clock::now();
+    }
+
+    // _ts = chrono::system_clock::now();
+    _ts_stack.push(chrono::system_clock::now());
 
 }
 
@@ -250,20 +306,36 @@ void PAPIProf::start_counters(string funcname,
 void PAPIProf::stop_counters()
 {
     long long *eventValues = new long long[_events_set.size()];
-    if (_events_set.size())
-        papi_stop(_eventSet, eventValues);
+    // if (_events_set.size()){
+    //     papi_stop(_eventSet, eventValues);
+    // }
 
-    chrono::duration<double> elapsed_time = chrono::system_clock::now() - _ts;
+    if (_events_set.size()) {
+        // papi_stop(_eventSet, eventValues);
+        papi_read(_eventSet, eventValues);
+        long long *prevValues = _eventValues.top(); _eventValues.pop();
+        for (int i = 0; i < (int)_events_set.size(); i++)
+            eventValues[i] = eventValues[i] - prevValues[i];
+    }
 
-    _counters[_key + "\ttime(ms)"].push_back(1000 * elapsed_time.count());
+
+    chrono::time_point<chrono::high_resolution_clock> te = chrono::system_clock::now();
+    chrono::duration<double> elapsed_time = te - _ts_stack.top(); _ts_stack.pop();
+
+    auto key = _key_stack.top(); _key_stack.pop();
+    _counters[key + "\ttime(ms)"].push_back(1000 * elapsed_time.count());
 
     for (int i = 0; i < (int)_events_names.size(); ++i) {
-        _counters[_key + "\t" + _events_names[i]].push_back((double)eventValues[i]);
+        _counters[key + "\t" + _events_names[i]].push_back((double)eventValues[i]);
     }
 }
 
 
-void PAPIProf::clear_counters() {}
+void PAPIProf::clear_counters() {
+    _events_set.clear();
+    _events_names.clear();
+    papi_reset(_eventSet);
+}
 
 
 void PAPIProf::add_metrics(vector<string> metrics, bool helper)

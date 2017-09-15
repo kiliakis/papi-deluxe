@@ -8,6 +8,7 @@
 #include <set>
 #include <unordered_map>
 #include <chrono>
+#include <stack>
 
 int papi_init(int *eventSet);
 int papi_add_events(int eventSet, std::vector<std::string> eventNames);
@@ -16,6 +17,7 @@ int papi_stop(int eventSet, long long * values);
 int papi_reset(int eventSet);
 int papi_read(int eventSet, long long * values);
 int papi_destroy(int *eventSet);
+int papi_remove_events(int eventSet, std::vector<std::string> eventNames);
 
 
 class PAPIProf
@@ -26,9 +28,11 @@ private:
     std::set<std::string> _metrics;
     std::unordered_map<std::string, std::vector<double>> _counters;
     int _eventSet;
-    std::string _key; // could be even better with a stack of strings
-    std::chrono::time_point<std::chrono::high_resolution_clock> _ts;
-    
+    // std::string _key; // could be even better with a stack of strings
+    // std::chrono::time_point<std::chrono::high_resolution_clock> _ts;
+    std::stack<std::chrono::time_point<std::chrono::high_resolution_clock>> _ts_stack;
+    std::stack<std::string> _key_stack;
+    std::stack<long long *> _eventValues;
 public:
     PAPIProf(std::vector<std::string> metrics = std::vector<std::string>(),
              std::vector<std::string> events = std::vector<std::string>());
@@ -39,6 +43,7 @@ public:
                         std::vector<std::string> events = std::vector<std::string>());
     void stop_counters();
     void clear_counters();
+    void remove_events(std::vector<std::string> events);
     void add_metrics(std::vector<std::string> metrics, bool helper = false);
     void report_metrics();
     void report_counters();
