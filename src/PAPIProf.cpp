@@ -328,6 +328,52 @@ void PAPIProf::remove_events(std::vector<std::string> events)
 }
 
 
+// void PAPIProf::start_counters(string funcname,
+//                               vector<string> metrics,
+//                               vector<string> events)
+// {
+//     if (metrics.size()) add_metrics(metrics);
+//     add_events(events);
+//     _key_stack.push(funcname);
+
+//     if (_events_set.size()) {
+//         long long *eventValues = new long long[_events_set.size()];
+//         papi_read(_eventSet, eventValues);
+//         _eventValues.push(eventValues);
+
+//     }
+
+//     _ts_stack.push(PAPI_get_real_usec());
+
+// }
+
+
+// void PAPIProf::stop_counters()
+// {
+//     long long *eventValues = new long long[_events_set.size()];
+
+//     if (_events_set.size()) {
+//         papi_read(_eventSet, eventValues);
+//         long long *prevValues = _eventValues.top(); _eventValues.pop();
+//         for (int i = 0; i < (int)_events_set.size(); i++){
+//             eventValues[i] = eventValues[i] - prevValues[i];
+//             if(eventValues[i] < 0)
+//                 printf("EventName: %s, Value: %Ld\n",_events_names[i].c_str(), eventValues[i]);
+//         }
+//     }
+
+//     long long te = PAPI_get_real_usec();
+//     double msec = (double) (te - _ts_stack.top()) / 1000.0; _ts_stack.pop();
+
+//     auto key = _key_stack.top(); _key_stack.pop();
+//     _counters[key + "\ttime(ms)"].push_back(msec);
+
+//     for (int i = 0; i < (int)_events_names.size(); ++i) {
+//         _counters[key + "\t" + _events_names[i]].push_back((double)eventValues[i]);
+//     }
+// }
+
+
 void PAPIProf::start_counters(string funcname,
                               vector<string> metrics,
                               vector<string> events)
@@ -337,10 +383,12 @@ void PAPIProf::start_counters(string funcname,
     _key_stack.push(funcname);
 
     if (_events_set.size()) {
-        long long *eventValues = new long long[_events_set.size()];
-        papi_read(_eventSet, eventValues);
-        _eventValues.push(eventValues);
-
+        if (papi_is_running(_eventSet)) {
+            long long *eventValues = new long long[_events_set.size()];
+            papi_stop(_eventSet, eventValues);
+            papi_reset(_eventSet);
+        }
+        papi_start(_eventSet);
     }
 
     _ts_stack.push(PAPI_get_real_usec());
@@ -353,10 +401,11 @@ void PAPIProf::stop_counters()
     long long *eventValues = new long long[_events_set.size()];
 
     if (_events_set.size()) {
-        papi_read(_eventSet, eventValues);
-        long long *prevValues = _eventValues.top(); _eventValues.pop();
-        for (int i = 0; i < (int)_events_set.size(); i++)
-            eventValues[i] = eventValues[i] - prevValues[i];
+        papi_stop(_eventSet, eventValues);
+        for (int i = 0; i < (int)_events_set.size(); i++) {
+            if (eventValues[i] < 0)
+                printf("EventName: %s, Value: %Ld\n", _events_names[i].c_str(), eventValues[i]);
+        }
     }
 
     long long te = PAPI_get_real_usec();

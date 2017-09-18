@@ -93,7 +93,7 @@ gPresetMetrics = {
             "/", "100.0", "*"
         }
     },
-    {"CORE_BOUND%", {"BACK_BOUND_AT_EXE%", "MEM_BOUND%", "-", "100.00", "*"}},
+    {"CORE_BOUND%", {"BACK_BOUND_AT_EXE%", "MEM_BOUND%", "-", "100.0", "*"}},
     {"RESOURCE_STALLS_COST%", {"RESOURCE_STALLS:ALL", "CPU_CLK_UNHALTED", "/"}},
     {   "LOCK_CONTENTION%", {"MEM_LOAD_UOPS_L3_HIT_RETIRED:XSNP_HITM",
             "MEM_UOPS_RETIRED:LOCK_LOADS", "/", "100.00", "*"

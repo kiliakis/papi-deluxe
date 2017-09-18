@@ -4,7 +4,8 @@
 #include <random>
 
 
-PAPIProf profiler = PAPIProf({"CORE_BOUND%"});
+PAPIProf profiler = PAPIProf({"MEM_BOUND%"});
+// , {"MEM_LOAD_UOPS_RETIRED:L3_HIT", "MEM_LOAD_UOPS_RETIRED:L3_MISS"});
 
 double foo(const int *a, const int *b, const int points)
 {
