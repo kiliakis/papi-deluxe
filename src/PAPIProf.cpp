@@ -117,6 +117,19 @@ int papi_start(int eventSet)
 }
 
 
+bool papi_is_running(int eventSet)
+{
+    int status;
+    int retval = PAPI_state(eventSet, &status);
+    if (retval != PAPI_OK) {
+        fprintf(stderr, "PAPI status error\n");
+        PAPI_perror(PAPI_strerror(retval));
+        return retval;
+    }
+    return ((status & 0x3) == PAPI_RUNNING);
+}
+
+
 int papi_stop(int eventSet, long long * values)
 {
     /* Stop the counting of events in the Event Set */
@@ -158,7 +171,6 @@ int papi_read(int eventSet, long long * values)
 int papi_destroy(int *eventSet)
 {
     int retval = PAPI_destroy_eventset(eventSet);
-    /* Read the counting events in the Event Set */
     if (retval != PAPI_OK) {
         fprintf(stderr, "PAPI destroy error\n");
         PAPI_perror(PAPI_strerror(retval));
@@ -166,6 +178,18 @@ int papi_destroy(int *eventSet)
     }
     return 0;
 }
+
+
+int papi_cleanup(int eventSet) {
+    int retval = PAPI_cleanup_eventset(eventSet);
+    if (retval != PAPI_OK) {
+        fprintf(stderr, "PAPI cleanup error\n");
+        PAPI_perror(PAPI_strerror(retval));
+        return retval;
+    }
+    return 0;
+}
+
 
 
 double get_mean(vector<double> &v) {
@@ -231,8 +255,26 @@ PAPIProf::PAPIProf(vector<string> metrics,
     if (metrics.size() != 0)
         add_metrics(metrics);
     add_events(events);
-    papi_start(_eventSet);
+}
 
+
+PAPIProf::~PAPIProf() {
+    if (papi_is_running(_eventSet)) {
+        long long *eventValues = new long long[_events_set.size()];
+        papi_stop(_eventSet, eventValues);
+        delete[] eventValues;
+    }
+
+    papi_cleanup(_eventSet);
+    papi_destroy(&_eventSet);
+    PAPI_shutdown();
+    _events_names.clear();
+    _events_set.clear();
+    _counters.clear();
+    _metrics.clear();
+    while (!_ts_stack.empty()) _ts_stack.pop();
+    while (!_key_stack.empty()) _key_stack.pop();
+    while (!_eventValues.empty()) _eventValues.pop();
 }
 
 void PAPIProf::add_events(vector<string> events)
@@ -245,13 +287,18 @@ void PAPIProf::add_events(vector<string> events)
             _events_names.push_back(e);
         }
     }
-    papi_add_events(_eventSet, new_events);
-    // if (new_events.size() > 0) {
-    //     papi_reset(_eventSet);
-    //     // long long *eventValues = new long long[_events_set.size()];
-    //     // papi_stop(_eventSet, eventValues);
-    //     papi_start(_eventSet);
-    // }
+    if (new_events.size() > 0) {
+        if (papi_is_running(_eventSet)) {
+            long long *eventValues = new long long[_events_set.size()];
+            papi_stop(_eventSet, eventValues);
+            papi_add_events(_eventSet, new_events);
+            papi_start(_eventSet);
+            delete[] eventValues;
+        } else {
+            papi_add_events(_eventSet, new_events);
+            papi_start(_eventSet);
+        }
+    }
 }
 
 void PAPIProf::remove_events(std::vector<std::string> events)
@@ -266,12 +313,18 @@ void PAPIProf::remove_events(std::vector<std::string> events)
         }
     }
     papi_remove_events(_eventSet, removed_events);
-    // if (removed_events.size() > 0) {
-    //     papi_reset(_eventSet);
-    //     // long long *eventValues = new long long[_events_set.size()];
-    //     // papi_stop(_eventSet, eventValues);
-    //     papi_start(_eventSet);
-    // }
+
+    if (removed_events.size() > 0) {
+        long long *eventValues = new long long[_events_set.size()];
+        if (papi_is_running(_eventSet)) {
+            papi_stop(_eventSet, eventValues);
+            papi_remove_events(_eventSet, removed_events);
+            papi_start(_eventSet);
+        } else {
+            papi_add_events(_eventSet, removed_events);
+            papi_start(_eventSet);
+        }
+    }
 }
 
 
@@ -318,11 +371,11 @@ void PAPIProf::stop_counters()
 }
 
 
-void PAPIProf::clear_counters() {
-    _events_set.clear();
-    _events_names.clear();
-    papi_reset(_eventSet);
-}
+// void PAPIProf::clear_counters() {
+//     _events_set.clear();
+//     _events_names.clear();
+//     papi_reset(_eventSet);
+// }
 
 
 void PAPIProf::add_metrics(vector<string> metrics, bool helper)

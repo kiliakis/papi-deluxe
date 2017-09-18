@@ -1,4 +1,5 @@
 DIR=$(shell pwd)
+# PAPI_LIB=$(WORK)/install/lib
 CC=g++
 CFLAGS=-Wall -std=c++11
 LDFLAGS=-fPIC -shared -L$(PAPI_LIB)

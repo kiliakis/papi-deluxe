@@ -4,10 +4,10 @@
 #include <random>
 
 
-PAPIProf profiler = PAPIProf({"CORE_BOUND%"});
 
 double foo(const int *a, const int *b, const int points)
 {
+    PAPIProf profiler = PAPIProf({"IPC", "CPI"});
     profiler.start_counters("foo");
     double acc = 0.0;
     for (int i = 0; i < points; ++i)
@@ -15,7 +15,10 @@ double foo(const int *a, const int *b, const int points)
         acc += (double) (a[i] - b[i]) / (a[i] + b[i]);
     }
     profiler.stop_counters();
-
+    profiler.report_timing();
+    profiler.report_counters();
+    profiler.report_metrics();
+    
     return acc;
 }
 
@@ -51,10 +54,6 @@ int main(int argc, char const *argv[])
     }
 
     printf("Acc is: %lf\n", acc);
-
-    profiler.report_timing();
-    profiler.report_counters();
-    profiler.report_metrics();
 
 
     return 0;
