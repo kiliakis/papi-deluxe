@@ -391,7 +391,7 @@ void PAPIProfMultiThread::report_global_counters()
 
     for (auto &kv : _counters_global) {
         if (kv.first.find("time(ms)") == string::npos) {
-            fprintf(stderr, "%s\t%.3lf\t%d\t%u\n",
+            fprintf(stderr, "%s\t%.0lf\t%d\t%u\n",
                     kv.first.c_str(), kv.second[0], 0, 1);
 
         }
