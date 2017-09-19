@@ -6,7 +6,7 @@
 
 namespace metrics {
 
-std::unordered_map<std::string, std::vector<std::string>>
+static std::unordered_map<std::string, std::vector<std::string>>
 gPresetMetrics = {
     {"IPC", {"INSTRUCTIONS_RETIRED", "CPU_CLK_UNHALTED", "/"} },
     {"CPI", {"CPU_CLK_UNHALTED", "INSTRUCTIONS_RETIRED", "/"} },

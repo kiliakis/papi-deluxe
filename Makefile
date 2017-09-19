@@ -4,7 +4,7 @@ CC=g++
 CFLAGS=-Wall -std=c++11
 LDFLAGS=-fPIC -shared -L$(PAPI_LIB)
 INCLUDE=-I$(DIR)/include
-LIB_SOURCE=$(DIR)/src/PAPIProf.cpp
+LIB_SOURCE=$(DIR)/src/PAPIProf.cpp $(DIR)/src/PAPIProfMultiThread.cpp
 LIB=$(DIR)/lib/libpapiprof.so
 EXAMPLES=$(wildcard $(DIR)/examples/*.cpp)
 EXECUTABLES=$(patsubst %.cpp, %, $(EXAMPLES))
@@ -16,7 +16,7 @@ all: $(LIB) $(EXECUTABLES)
 	$(CC) $(CFLAGS) $(INCLUDE) -L$(DIR)/lib -o $@ $^ -lpapiprof
 
 $(LIB): $(LIB_SOURCE)
-	$(CC) $(CFLAGS) $(INCLUDE) $(LDFLAGS) $< -o $@ -lpapi
+	$(CC) $(CFLAGS) $(INCLUDE) $(LDFLAGS) $^ -o $@ -lpapi
 
 clean:
 	rm $(LIB) $(EXECUTABLES)
