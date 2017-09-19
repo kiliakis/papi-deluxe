@@ -104,8 +104,15 @@ gPresetMetrics = {
             "CPU_CLK_UNHALTED", "/", "100.0", "*"
         }
     },
+    // {   "COMPUTE_INTENSITY", {"INSTRUCTIONS_RETIRED",
+    //         "MEM_LOAD_UOPS_RETIRED:L3_MISS", "/"
+    //         // "MEM_LOAD_UOPS_L3_MISS_RETIRED:LOCAL_DRAM",
+    //         // "MEM_LOAD_UOPS_L3_MISS_RETIRED:REMOTE_DRAM", "+", "/"
+    //     }
+    // },
     {   "COMPUTE_INTENSITY", {"INSTRUCTIONS_RETIRED",
-            "MEM_LOAD_UOPS_RETIRED:L3_MISS", "/"
+            "MEM_UOPS_RETIRED:ALL_LOADS", "MEM_UOPS_RETIRED:ALL_STORES", "+",
+            "/"
             // "MEM_LOAD_UOPS_L3_MISS_RETIRED:LOCAL_DRAM",
             // "MEM_LOAD_UOPS_L3_MISS_RETIRED:REMOTE_DRAM", "+", "/"
         }
