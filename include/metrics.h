@@ -94,7 +94,10 @@ gPresetMetrics = {
         }
     },
     {"CORE_BOUND%", {"BACK_BOUND_AT_EXE%", "MEM_BOUND%", "-", "100.0", "*"}},
-    {"RESOURCE_STALLS_COST%", {"RESOURCE_STALLS:ALL", "CPU_CLK_UNHALTED", "/"}},
+    {   "RESOURCE_STALLS_COST%", {"RESOURCE_STALLS:ALL", "CPU_CLK_UNHALTED", "/",
+            "100.0", "*"
+        }
+    },
     {   "LOCK_CONTENTION%", {"MEM_LOAD_UOPS_L3_HIT_RETIRED:XSNP_HITM",
             "MEM_UOPS_RETIRED:LOCK_LOADS", "/", "100.00", "*"
         }
@@ -104,14 +107,21 @@ gPresetMetrics = {
             "CPU_CLK_UNHALTED", "/", "100.0", "*"
         }
     },
-    // {   "COMPUTE_INTENSITY", {"INSTRUCTIONS_RETIRED",
+    // {   "COMPUTE_INTENSITY1", {"INSTRUCTIONS_RETIRED",
     //         "MEM_LOAD_UOPS_RETIRED:L3_MISS", "/"
     //         // "MEM_LOAD_UOPS_L3_MISS_RETIRED:LOCAL_DRAM",
     //         // "MEM_LOAD_UOPS_L3_MISS_RETIRED:REMOTE_DRAM", "+", "/"
     //     }
     // },
-    {   "COMPUTE_INTENSITY", {"INSTRUCTIONS_RETIRED",
-            "MEM_UOPS_RETIRED:ALL_LOADS", "MEM_UOPS_RETIRED:ALL_STORES", "+",
+    {   "COMPUTE_INTENSITY2", {"INSTRUCTIONS_RETIRED",
+            "MEM_UOPS_RETIRED:ALL_LOADS",
+            "/"
+            // "MEM_LOAD_UOPS_L3_MISS_RETIRED:LOCAL_DRAM",
+            // "MEM_LOAD_UOPS_L3_MISS_RETIRED:REMOTE_DRAM", "+", "/"
+        }
+    },
+    {   "COMPUTE_INTENSITY3", {"CPU_CLK_THREAD_UNHALTED:THREAD_P",
+            "MEM_UOPS_RETIRED:ALL_LOADS",
             "/"
             // "MEM_LOAD_UOPS_L3_MISS_RETIRED:LOCAL_DRAM",
             // "MEM_LOAD_UOPS_L3_MISS_RETIRED:REMOTE_DRAM", "+", "/"
