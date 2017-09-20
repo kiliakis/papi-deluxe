@@ -8,8 +8,6 @@
 #include <set>
 #include <unordered_map>
 #include <stack>
-// #include <mutex>  // For std::unique_lock
-// #include <shared_mutex>
 
 
 int papi_singlethread_init();
@@ -69,31 +67,10 @@ public:
 
 class PAPIProf : public PAPIProfBase
 {
-// private:
-    // std::set<std::string> _events_set;
-    // std::vector<std::string> _events_names;
-    // std::set<std::string> _metrics;
-    // std::unordered_map<std::string, std::vector<double>> _counters;
-    // int _eventSet;
-    // std::stack<long long> _ts_stack;
-    // std::stack<std::string> _key_stack;
-    // std::stack<long long *> _eventValues;
 public:
     PAPIProf(std::vector<std::string> metrics = std::vector<std::string>(),
              std::vector<std::string> events = std::vector<std::string>());
     ~PAPIProf();
-    // void add_events(std::vector<std::string> events);
-    // void start_counters(std::string funcname,
-    //                     std::vector<std::string> metrics = std::vector<std::string>(),
-    //                     std::vector<std::string> events = std::vector<std::string>());
-    // void stop_counters();
-    // void clear_counters();
-    // void cleanup();
-    // void remove_events(std::vector<std::string> events);
-    // void add_metrics(std::vector<std::string> metrics, bool helper = false);
-    // void report_metrics();
-    // void report_counters();
-    // void report_timing();
 };
 
 
@@ -101,77 +78,15 @@ public:
 
 class PAPIProfMultiThread : public PAPIProfBase
 {
-// private:
-//     std::set<std::string> _events_set;
-//     std::vector<std::string> _events_names;
-//     std::set<std::string> _metrics;
-//     std::unordered_map<std::string, std::vector<double>> _counters;
-//     int _eventSet = PAPI_NULL;
-//     std::stack<long long> _ts_stack;
-//     std::stack<std::string> _key_stack;
-//     std::stack<long long *> _eventValues;
 public:
-    PAPIProfMultiThread(std::vector<std::string> metrics = std::vector<std::string>(),
-                        std::vector<std::string> events = std::vector<std::string>());
+    PAPIProfMultiThread();
     ~PAPIProfMultiThread();
-    // void add_events(std::vector<std::string> events);
-    // void start_counters(std::string funcname,
-    //                     std::vector<std::string> metrics = std::vector<std::string>(),
-    //                     std::vector<std::string> events = std::vector<std::string>());
-    // void stop_counters();
-    // void clear_counters();
-    // void cleanup();
-    // void remove_events(std::vector<std::string> events);
-    // void add_metrics(std::vector<std::string> metrics, bool helper = false);
-    // void report_metrics();
-    // void report_counters();
-    // void report_timing();
+    void init(std::vector<std::string> metrics = std::vector<std::string>(),
+              std::vector<std::string> events = std::vector<std::string>());
 };
 
 
-std::unordered_map<std::string, std::vector<double>> report_global_counters(std::vector<PAPIProfMultiThread *> &profilers);
-std::unordered_map<std::string, double> report_global_metrics(std::vector<PAPIProfMultiThread *> &profilers);
-
-// class PAPIProfMultiThread
-// {
-// private:
-//     std::vector<std::set<std::string>> _events_set_arr;
-//     std::vector<std::vector<std::string>> _events_names_arr;
-//     std::vector<std::set<std::string>> _metrics_arr;
-//     std::vector<std::unordered_map<std::string, std::vector<double>>> _counters_arr;
-//     std::vector<int> _eventSet_arr;
-//     std::vector<std::stack<long long>> _ts_stack_arr;
-//     std::vector<std::stack<std::string>> _key_stack_arr;
-//     std::vector<std::stack<long long *>> _eventValues_arr;
-
-//     mutable std::mutex _mutex;
-
-//     std::unordered_map<long unsigned int, unsigned int> _tids;
-//     volatile unsigned int _thread_count = 0;
-//     std::unordered_map<std::string, std::vector<double>> _counters_global;
-//     // std::vector<std::string> _events_names_global;
-//     std::unordered_map<std::string, double> _metrics_global;
-
-// public:
-//     PAPIProfMultiThread(unsigned int threads,
-//                         unsigned long (*func) (void));
-//     ~PAPIProfMultiThread();
-//     void init(std::vector<std::string> metrics = std::vector<std::string>(),
-//               std::vector<std::string> events = std::vector<std::string>());
-//     void add_events(std::vector<std::string> events);
-//     void start_counters(std::string funcname,
-//                         std::vector<std::string> metrics = std::vector<std::string>(),
-//                         std::vector<std::string> events = std::vector<std::string>());
-//     void stop_counters();
-//     void clear_counters();
-//     void cleanup();
-//     void remove_events(std::vector<std::string> events);
-//     void add_metrics(std::vector<std::string> metrics, bool helper = false);
-//     void report_metrics();
-//     void report_counters();
-//     void report_timing();
-//     void compute_global();
-//     void report_global_timing();
-//     void report_global_counters();
-//     void report_global_metrics();
-// };
+std::unordered_map<std::string, std::vector<double>> compute_global_counters(std::vector<PAPIProfMultiThread *> &profilers);
+std::unordered_map<std::string, double> compute_global_metrics(std::vector<PAPIProfMultiThread *> &profilers);
+void report_global_counters(std::vector<PAPIProfMultiThread *> &profilers);
+void report_global_metrics(std::vector<PAPIProfMultiThread *> &profilers);
