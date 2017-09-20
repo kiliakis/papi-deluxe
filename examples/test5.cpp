@@ -10,9 +10,11 @@ long unsigned int get_id() {
 
 int main(int argc, char const *argv[])
 {
-    auto profiler = PAPIProfMultiThread(1, get_id);
-    profiler.init({"IPC"});
+    papi_multithread_init(get_id);
+
+    auto profiler = PAPIProfMultiThread({"IPC"});
     profiler.start_counters("main");
+
 
     int loops = 1000;
     int points = 1000;
@@ -47,18 +49,19 @@ int main(int argc, char const *argv[])
             acc += (double)(a[j] - b[j]) / (a[j] + b[j]);
         }
     }
+    printf("Ok till here!\n");
 
     profiler.stop_counters();
 
     printf("Acc is: %lf\n", acc);
-    // profiler.report_timing();
-    // profiler.report_counters();
-    // profiler.report_metrics();
-    profiler.compute_global();
+    profiler.report_timing();
+    profiler.report_counters();
+    profiler.report_metrics();
+    // profiler.compute_global();
     // profiler.report_global_timing();
     // profiler.report_global_counters();
-    profiler.report_global_metrics();
-    profiler.cleanup();
-    profiler.clear_counters();
+    // profiler.report_global_metrics();
+    // profiler.cleanup();
+    // profiler.clear_counters();
     return 0;
 }

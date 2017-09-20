@@ -9,11 +9,10 @@
 using namespace std;
 using namespace metrics;
 
-int papi_init(int *eventSet)
+int papi_singlethread_init()
 {
     /* Initialize the PAPI library */
     int retval = PAPI_library_init(PAPI_VER_CURRENT);
-    *eventSet = PAPI_NULL;
 
     if (retval != PAPI_VER_CURRENT && retval > 0) {
         fprintf(stderr, "PAPI version error\n");
@@ -27,8 +26,17 @@ int papi_init(int *eventSet)
         PAPI_perror(PAPI_strerror(retval));
         return retval;
     }
+
+    return 0;
+}
+
+
+
+
+int papi_eventset_init(int *eventSet) {
     /* Initialize the multiplexed events */
-    retval = PAPI_multiplex_init();
+    *eventSet = PAPI_NULL;
+    int retval = PAPI_multiplex_init();
     if (retval != PAPI_OK) {
         fprintf(stderr, "PAPI multiplex init error\n");
         PAPI_perror(PAPI_strerror(retval));
@@ -59,12 +67,8 @@ int papi_init(int *eventSet)
         return retval;
     }
 
-
-
     return 0;
-
 }
-
 
 int papi_add_events(int eventSet, vector<string> eventNames)
 {
@@ -191,6 +195,10 @@ int papi_cleanup(int eventSet) {
     return 0;
 }
 
+void papi_shutdown() {
+    PAPI_shutdown();
+}
+
 
 double get_mean(vector<double> &v) {
     return accumulate(v.begin(), v.end(), (long double)0.0) / v.size();
@@ -251,26 +259,7 @@ double evaluate(vector<string> equation,
 
 
 
-PAPIProf::PAPIProf(vector<string> metrics,
-                   vector<string> events)
-{
-    papi_init(&_eventSet);
-    if (metrics.size() != 0)
-        add_metrics(metrics);
-    add_events(events);
-}
-
-
-PAPIProf::~PAPIProf() {
-    if (papi_is_running(_eventSet)) {
-        long long *eventValues = new long long[_events_set.size()];
-        papi_stop(_eventSet, eventValues);
-        delete[] eventValues;
-    }
-
-    papi_cleanup(_eventSet);
-    papi_destroy(&_eventSet);
-    PAPI_shutdown();
+void PAPIProfBase::clear_counters() {
     _events_names.clear();
     _events_set.clear();
     _counters.clear();
@@ -280,7 +269,24 @@ PAPIProf::~PAPIProf() {
     while (!_eventValues.empty()) _eventValues.pop();
 }
 
-void PAPIProf::add_events(vector<string> events)
+
+void PAPIProfBase::cleanup() {
+    if (papi_is_running(_eventSet)) {
+        long long *eventValues = new long long[_events_set.size()];
+        papi_stop(_eventSet, eventValues);
+        delete[] eventValues;
+    }
+
+    papi_cleanup(_eventSet);
+    papi_destroy(&_eventSet);
+    int retval = PAPI_unregister_thread();
+    if (retval != PAPI_OK) {
+        fprintf(stderr, "PAPI unregister thread error\n");
+        PAPI_perror(PAPI_strerror(retval));
+    }
+}
+
+void PAPIProfBase::add_events(vector<string> events)
 {
     vector<string> new_events;
     for (auto e : events) {
@@ -304,7 +310,7 @@ void PAPIProf::add_events(vector<string> events)
     }
 }
 
-void PAPIProf::remove_events(std::vector<std::string> events)
+void PAPIProfBase::remove_events(std::vector<std::string> events)
 {
     vector<string> removed_events;
     for (auto e : events) {
@@ -331,9 +337,9 @@ void PAPIProf::remove_events(std::vector<std::string> events)
 }
 
 
-void PAPIProf::start_counters(string funcname,
-                              vector<string> metrics,
-                              vector<string> events)
+void PAPIProfBase::start_counters(string funcname,
+                                  vector<string> metrics,
+                                  vector<string> events)
 {
     if (metrics.size()) add_metrics(metrics);
     add_events(events);
@@ -353,7 +359,7 @@ void PAPIProf::start_counters(string funcname,
 }
 
 
-void PAPIProf::stop_counters()
+void PAPIProfBase::stop_counters()
 {
     long long *eventValues = new long long[_events_set.size()];
 
@@ -378,14 +384,12 @@ void PAPIProf::stop_counters()
 
 
 
-void PAPIProf::add_metrics(vector<string> metrics, bool helper)
+void PAPIProfBase::add_metrics(vector<string> metrics, bool helper)
 {
     vector<string> new_metrics;
     for (auto m : metrics) {
         if (_metrics.find(m) == _metrics.end())
             new_metrics.push_back(m);
-        // auto pair = _metrics.insert(m);
-        // if (pair.second) new_metrics.push_back(m);
     }
     vector<string> events;
     set<string> operators = {"/", "*", "-", "+"};
@@ -395,7 +399,6 @@ void PAPIProf::add_metrics(vector<string> metrics, bool helper)
             try {
                 stod(symbol);
             } catch (exception& e) {
-                // printf("SYmbol %s\n", symbol.c_str());
                 if (gPresetMetrics.find(symbol) != gPresetMetrics.end()) {
                     add_metrics({symbol}, true);
                 } else if (operators.find(symbol) == operators.end()) {
@@ -412,7 +415,7 @@ void PAPIProf::add_metrics(vector<string> metrics, bool helper)
 }
 
 
-void PAPIProf::report_metrics()
+void PAPIProfBase::report_metrics()
 {
     fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
@@ -433,7 +436,7 @@ void PAPIProf::report_metrics()
     fprintf(stderr, "\nCounters Report End\n");
 }
 
-void PAPIProf::report_counters()
+void PAPIProfBase::report_counters()
 {
     fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
@@ -453,7 +456,7 @@ void PAPIProf::report_counters()
 }
 
 
-void PAPIProf::report_timing() {
+void PAPIProfBase::report_timing() {
     fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
 
@@ -468,4 +471,23 @@ void PAPIProf::report_timing() {
     }
     fprintf(stderr, "\nCounters Report End\n");
 
+}
+
+
+
+PAPIProf::PAPIProf(vector<string> metrics,
+                   vector<string> events)
+{
+    papi_singlethread_init();
+    papi_eventset_init(&_eventSet);
+    if (metrics.size() != 0)
+        add_metrics(metrics);
+    add_events(events);
+}
+
+
+PAPIProf::~PAPIProf() {
+    cleanup();
+    papi_shutdown();
+    clear_counters();
 }
