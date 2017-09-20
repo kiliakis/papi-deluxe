@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <stack>
 
-
+int handle_error(int retval, const char *string);
 int papi_singlethread_init();
 int papi_multithread_init(unsigned long (*func) (void));
 int papi_eventset_init(int *eventSet);
@@ -25,7 +25,6 @@ int papi_destroy(int * eventset);
 bool papi_is_running(int eventSet);
 void papi_shutdown();
 
-// int papi_multithread_init(unsigned long (*func) (void));
 double get_mean(std::vector<double> &v);
 double get_std(std::vector<double> &v);
 double evaluate(std::vector<std::string> equation,
@@ -42,6 +41,7 @@ protected:
     std::stack<long long> _ts_stack;
     std::stack<std::string> _key_stack;
     std::stack<long long *> _eventValues;
+    // bool _error = false;
 public:
     std::unordered_map<std::string, std::vector<double>> _counters;
     std::set<std::string> _metrics;

@@ -13,12 +13,7 @@ int papi_multithread_init(unsigned long (*func) (void)) {
     int retval = PAPI_library_init(PAPI_VER_CURRENT);
 
     retval = PAPI_thread_init(func);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI thread init error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
-
+    handle_error(retval, "thread init");
     return 0;
 }
 
@@ -31,12 +26,9 @@ void PAPIProfMultiThread::init(vector<string> metrics,
                                vector<string> events)
 {
     int retval = PAPI_register_thread();
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI register thread error\n");
-        PAPI_perror(PAPI_strerror(retval));
-    }
+    handle_error(retval, "register thread");
 
-    retval = papi_eventset_init(&_eventSet);
+    papi_eventset_init(&_eventSet);
 
     if (metrics.size() != 0)
         add_metrics(metrics);
@@ -46,7 +38,7 @@ void PAPIProfMultiThread::init(vector<string> metrics,
 
 PAPIProfMultiThread::~PAPIProfMultiThread()
 {
-    cleanup();
+    // cleanup();
     clear_counters();
 }
 

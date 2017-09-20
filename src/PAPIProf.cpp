@@ -9,6 +9,15 @@
 using namespace std;
 using namespace metrics;
 
+int handle_error(int retval, const char *string) {
+    if (retval != PAPI_OK) {
+        fprintf(stderr, "PAPI %s error\n", string);
+        PAPI_strerror(retval);
+        return retval;
+    }
+    return 0;
+}
+
 int papi_singlethread_init()
 {
     /* Initialize the PAPI library */
@@ -16,14 +25,14 @@ int papi_singlethread_init()
 
     if (retval != PAPI_VER_CURRENT && retval > 0) {
         fprintf(stderr, "PAPI version error\n");
-        PAPI_perror(PAPI_strerror(retval));
+        PAPI_strerror(retval);
         return retval;
     }
 
     if (retval < 0) {
         fprintf(stderr, "PAPI version error\n");
 
-        PAPI_perror(PAPI_strerror(retval));
+        PAPI_strerror(retval);
         return retval;
     }
 
@@ -37,35 +46,25 @@ int papi_eventset_init(int *eventSet) {
     /* Initialize the multiplexed events */
     *eventSet = PAPI_NULL;
     int retval = PAPI_multiplex_init();
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI multiplex init error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "multiplex init");
 
     /* Create the Event Set */
     retval = PAPI_create_eventset(eventSet);
-    if ( retval != PAPI_OK) {
-        fprintf(stderr, "PAPI create_eventset error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "create eventset");
 
     /* Convert the eventSet */
     retval = PAPI_assign_eventset_component(*eventSet, 0);
+    handle_error(retval, "assingn eventset");
+
     if (retval != PAPI_OK) {
         fprintf(stderr, "PAPI assign eventSet error\n");
-        PAPI_perror(PAPI_strerror(retval));
+        PAPI_strerror(retval);
         return retval;
     }
 
     /* Convert the eventSet */
     retval = PAPI_set_multiplex(*eventSet);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI set multiplex error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "set multiplex");
 
     return 0;
 }
@@ -74,18 +73,20 @@ int papi_add_events(int eventSet, vector<string> eventNames)
 {
     int retval;
     // fprintf(stderr, "In papi_add_events\n");
-
+    // int tempEventSet = eventSet;
     for (auto &e : eventNames) {
         char* c_string = const_cast<char*>(e.c_str());
-        retval = PAPI_add_named_event(eventSet, c_string);
-        if (retval != PAPI_OK) {
-            // fprintf(stderr, "PAPI add_named_event error\n");
-            fprintf(stderr, "PAPI event %s was not added!\n", c_string);
-            PAPI_perror(PAPI_strerror(retval));
-            return retval;
-        }
-        // fprintf(stderr, "Event %s added\n", c_string);
+        int code;
+
+        retval = PAPI_event_name_to_code(c_string, &code);
+        handle_error(retval, "event_name_to_code");
+
+        retval = PAPI_add_event(eventSet, code);
+        if ( handle_error(retval, "add_event") != 0)
+            fprintf(stderr, "Event %s was not added\n", c_string);
+
     }
+    // eventSet = tempEventSet;
     return 0;
 }
 
@@ -97,11 +98,7 @@ int papi_remove_events(int eventSet, vector<string> eventNames)
     for (auto &e : eventNames) {
         char *c_string = const_cast<char *>(e.c_str());
         retval = PAPI_remove_named_event(eventSet, c_string);
-        if (retval != PAPI_OK) {
-            fprintf(stderr, "PAPI event %s was not removed!\n", c_string);
-            PAPI_perror(PAPI_strerror(retval));
-            return retval;
-        }
+        handle_error(retval, "remove_event");
     }
     return 0;
 
@@ -113,11 +110,7 @@ int papi_start(int eventSet)
 
     /* Start counting events in the Event Set */
     int retval = PAPI_start(eventSet);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI start error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "papi start");
     return 0;
 }
 
@@ -126,11 +119,7 @@ bool papi_is_running(int eventSet)
 {
     int status;
     int retval = PAPI_state(eventSet, &status);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI status error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "state");
     return ((status & 0x3) == PAPI_RUNNING);
 }
 
@@ -139,11 +128,7 @@ int papi_stop(int eventSet, long long * values)
 {
     /* Stop the counting of events in the Event Set */
     int retval = PAPI_stop(eventSet, values);
-    if ( retval != PAPI_OK) {
-        fprintf(stderr, "PAPI stop error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "papi stop");
     return 0;
 }
 
@@ -151,11 +136,7 @@ int papi_stop(int eventSet, long long * values)
 int papi_reset(int eventSet) {
     /* Reset the counting events in the Event Set */
     int retval = PAPI_reset(eventSet);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI reset error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "papi reset");
     return 0;
 
 }
@@ -164,34 +145,21 @@ int papi_reset(int eventSet) {
 int papi_read(int eventSet, long long * values)
 {
     int retval = PAPI_read(eventSet, values);
-    /* Read the counting events in the Event Set */
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI read error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "papi read");
     return 0;
 }
 
 int papi_destroy(int *eventSet)
 {
     int retval = PAPI_destroy_eventset(eventSet);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI destroy error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "papi destroy");
     return 0;
 }
 
 
 int papi_cleanup(int eventSet) {
     int retval = PAPI_cleanup_eventset(eventSet);
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI cleanup error\n");
-        PAPI_perror(PAPI_strerror(retval));
-        return retval;
-    }
+    handle_error(retval, "papi cleanup");
     return 0;
 }
 
@@ -224,7 +192,6 @@ double evaluate(vector<string> equation,
 
     while (equation.size()) {
         auto symbol = equation.front();
-        // printf("%s\n", symbol.c_str());
         equation.erase(equation.begin());
         try {
             double num = stod(symbol);
@@ -280,10 +247,7 @@ void PAPIProfBase::cleanup() {
     papi_cleanup(_eventSet);
     papi_destroy(&_eventSet);
     int retval = PAPI_unregister_thread();
-    if (retval != PAPI_OK) {
-        fprintf(stderr, "PAPI unregister thread error\n");
-        PAPI_perror(PAPI_strerror(retval));
-    }
+    handle_error(retval, "unregiter thread");
 }
 
 void PAPIProfBase::add_events(vector<string> events)
