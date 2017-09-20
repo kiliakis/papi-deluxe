@@ -8,6 +8,9 @@
 #include <set>
 #include <unordered_map>
 #include <stack>
+#include <mutex>  // For std::unique_lock
+// #include <shared_mutex>
+
 
 int papi_init(int *eventSet);
 int papi_add_events(int eventSet, std::vector<std::string> eventNames);
@@ -73,7 +76,10 @@ private:
     std::vector<std::stack<std::string>> _key_stack_arr;
     std::vector<std::stack<long long *>> _eventValues_arr;
 
+    mutable std::mutex _mutex;
 
+    std::unordered_map<long unsigned int, unsigned int> _tids;
+    volatile unsigned int _thread_count = 0;
     std::unordered_map<std::string, std::vector<double>> _counters_global;
     // std::vector<std::string> _events_names_global;
     std::unordered_map<std::string, double> _metrics_global;

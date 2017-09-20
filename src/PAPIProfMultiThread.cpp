@@ -38,13 +38,19 @@ PAPIProfMultiThread::~PAPIProfMultiThread() {
 
 void PAPIProfMultiThread::init(vector<string> metrics, vector<string> events)
 {
-    auto tid = PAPI_thread_id();
+    unique_lock<mutex> lock(_mutex);
 
     int retval = PAPI_register_thread();
     if (retval != PAPI_OK) {
         fprintf(stderr, "PAPI register thread error\n");
         PAPI_perror(PAPI_strerror(retval));
     }
+
+    auto tid = PAPI_thread_id();
+    _tids[tid] = _thread_count;
+    _thread_count++;
+    tid = _tids[tid];
+    // printf("[%d] Hi!\n", (int) tid);
 
     retval = PAPI_multiplex_init();
     if (retval != PAPI_OK) {
@@ -71,6 +77,7 @@ void PAPIProfMultiThread::init(vector<string> metrics, vector<string> events)
         fprintf(stderr, "PAPI set multiplex error\n");
         PAPI_perror(PAPI_strerror(retval));
     }
+    lock.unlock();
 
     if (metrics.size() != 0)
         add_metrics(metrics);
@@ -78,8 +85,10 @@ void PAPIProfMultiThread::init(vector<string> metrics, vector<string> events)
 }
 
 
+// called by each of the slave threads
 void PAPIProfMultiThread::cleanup() {
-    auto tid = PAPI_thread_id();
+
+    auto tid = _tids[PAPI_thread_id()];
 
     if (papi_is_running(_eventSet_arr[tid])) {
         long long *eventValues = new long long[_events_set_arr[tid].size()];
@@ -94,24 +103,30 @@ void PAPIProfMultiThread::cleanup() {
         fprintf(stderr, "PAPI unregister thread error\n");
         PAPI_perror(PAPI_strerror(retval));
     }
+
 }
 
 
+// Called by the master thread only
 void PAPIProfMultiThread::clear_counters() {
-    auto tid = PAPI_thread_id();
+    // auto tid = _tids[PAPI_thread_id()];
 
-    _events_names_arr[tid].clear();
-    _events_set_arr[tid].clear();
-    _counters_arr[tid].clear();
-    _metrics_arr[tid].clear();
-    while (!_ts_stack_arr[tid].empty()) _ts_stack_arr[tid].pop();
-    while (!_key_stack_arr[tid].empty()) _key_stack_arr[tid].pop();
-    while (!_eventValues_arr[tid].empty()) _eventValues_arr[tid].pop();
+    _events_names_arr.clear();
+    _events_set_arr.clear();
+    _counters_arr.clear();
+    _metrics_arr.clear();
+    _ts_stack_arr.clear();
+    _key_stack_arr.clear();
+    _eventValues_arr.clear();
+    // while (!_ts_stack_arr.empty()) _ts_stack_arr.pop();
+    // while (!_key_stack_arr.empty()) _key_stack_arr.pop();
+    // while (!_eventValues_arr.empty()) _eventValues_arr.pop();
 }
 
 void PAPIProfMultiThread::add_events(vector<string> events)
 {
-    auto tid = PAPI_thread_id();
+
+    auto tid = _tids[PAPI_thread_id()];
 
     vector<string> new_events;
     for (auto e : events) {
@@ -137,7 +152,7 @@ void PAPIProfMultiThread::add_events(vector<string> events)
 
 void PAPIProfMultiThread::remove_events(vector<string> events)
 {
-    auto tid = PAPI_thread_id();
+    auto tid = _tids[PAPI_thread_id()];
 
     vector<string> removed_events;
     for (auto e : events) {
@@ -168,7 +183,8 @@ void PAPIProfMultiThread::start_counters(string funcname,
         vector<string> metrics,
         vector<string> events)
 {
-    auto tid = PAPI_thread_id();
+
+    auto tid = _tids[PAPI_thread_id()];
 
     if (metrics.size()) add_metrics(metrics);
     add_events(events);
@@ -185,12 +201,14 @@ void PAPIProfMultiThread::start_counters(string funcname,
 
     _ts_stack_arr[tid].push(PAPI_get_real_usec());
 
+
 }
 
 
 void PAPIProfMultiThread::stop_counters()
 {
-    auto tid = PAPI_thread_id();
+
+    auto tid = _tids[PAPI_thread_id()];
 
     long long *eventValues = new long long[_events_set_arr[tid].size()];
 
@@ -216,7 +234,7 @@ void PAPIProfMultiThread::stop_counters()
 
 void PAPIProfMultiThread::add_metrics(vector<string> metrics, bool helper)
 {
-    auto tid = PAPI_thread_id();
+    auto tid = _tids[PAPI_thread_id()];
 
     vector<string> new_metrics;
     for (auto m : metrics) {
@@ -252,7 +270,7 @@ void PAPIProfMultiThread::add_metrics(vector<string> metrics, bool helper)
 
 void PAPIProfMultiThread::report_metrics()
 {
-    auto tid = PAPI_thread_id();
+    auto tid = _tids[PAPI_thread_id()];
 
     fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
@@ -275,7 +293,7 @@ void PAPIProfMultiThread::report_metrics()
 
 void PAPIProfMultiThread::report_counters()
 {
-    auto tid = PAPI_thread_id();
+    auto tid = _tids[PAPI_thread_id()];
 
     fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
@@ -297,7 +315,7 @@ void PAPIProfMultiThread::report_counters()
 
 void PAPIProfMultiThread::report_timing()
 {
-    auto tid = PAPI_thread_id();
+    auto tid = _tids[PAPI_thread_id()];
 
     fprintf(stderr, "\nCounters Report Start\n");
     fprintf(stderr, "function\tcounter\taverage_value\tstd(%%)\tcalls\n");
@@ -377,8 +395,12 @@ void PAPIProfMultiThread::report_global_timing()
 
     for (auto &kv : _counters_global) {
         if (kv.first.find("time(ms)") != string::npos) {
-            fprintf(stderr, "%s\t%.3lf\t%d\t%u\n",
-                    kv.first.c_str(), kv.second[0], 0, 1);
+            long double mean = get_mean(kv.second);
+            long double sum = mean * kv.second.size();
+            long double std = get_std(kv.second);
+
+            fprintf(stderr, "%s\t%.3Lf\t%.1Lf\t%u\n",
+                    kv.first.c_str(), sum, 100.0 * std / mean, 1);
 
         }
     }
