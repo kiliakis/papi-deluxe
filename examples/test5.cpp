@@ -55,8 +55,8 @@ int main(int argc, char const *argv[])
     // profiler.report_counters();
     // profiler.report_metrics();
     profiler.compute_global();
-    profiler.report_global_timing();
-    profiler.report_global_counters();
+    // profiler.report_global_timing();
+    // profiler.report_global_counters();
     profiler.report_global_metrics();
     profiler.cleanup();
     profiler.clear_counters();

@@ -208,7 +208,7 @@ double get_std(vector<double> &v) {
 
 double evaluate(vector<string> equation,
                 string &funcname,
-                unordered_map <string, vector<double>> &counters,
+                unordered_map<string, vector<double>> &counters,
                 unordered_map<string, vector<string>> &preset_metrics)
 {
     stack<long double> stack;
@@ -216,6 +216,7 @@ double evaluate(vector<string> equation,
 
     while (equation.size()) {
         auto symbol = equation.front();
+        // printf("%s\n", symbol.c_str());
         equation.erase(equation.begin());
         try {
             double num = stod(symbol);

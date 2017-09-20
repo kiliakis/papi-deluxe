@@ -336,28 +336,33 @@ unsigned int is_in(vector<unordered_map<string, vector<double>>> mapV, string ke
 void PAPIProfMultiThread::compute_global()
 {
     // SUM the timings, SUM the counters, then compute the metrics array
-    auto counters = _counters_arr[0];
     unsigned int num_threads = _counters_arr.size();
 
     // Sum all counters
-    for (auto &kv : counters) {
+    for (auto &kv : _counters_arr[0]) {
         if (is_in(_counters_arr, kv.first) == num_threads) {
             _counters_global[kv.first].push_back(0.0);
             for (auto &c : _counters_arr) {
-                _counters_global[kv.first][0] += get_mean(c[kv.first]);
+                _counters_global[kv.first].push_back(get_mean(c[kv.first]));
             }
         }
     }
 
+
     // calculate all metrics
-    auto metrics = _metrics_arr[0];
-    for (auto &m : metrics) {
-        if (is_in(_metrics_arr, m) == num_threads) {
-            auto funcname = m.substr(0, m.find('\t'));
-            auto equation = gPresetMetrics[m];
-            auto result = evaluate(equation, funcname, _counters_global,
-                                   gPresetMetrics);
-            _metrics_global[m] = result;
+    set<string> checkedFunctions;
+    for (auto &kv : _counters_global) {
+        auto funcname = kv.first.substr(0, kv.first.find('\t'));
+        if (checkedFunctions.insert(funcname).second == false)
+            continue;
+        for (auto &m : _metrics_arr[0]) {
+            if (is_in(_metrics_arr, m) == num_threads) {
+                auto equation = gPresetMetrics[m];
+                auto result = evaluate(equation, funcname, _counters_global,
+                                       gPresetMetrics);
+                _metrics_global[m] = result;
+            }
+
         }
     }
 }
@@ -391,8 +396,12 @@ void PAPIProfMultiThread::report_global_counters()
 
     for (auto &kv : _counters_global) {
         if (kv.first.find("time(ms)") == string::npos) {
-            fprintf(stderr, "%s\t%.0lf\t%d\t%u\n",
-                    kv.first.c_str(), kv.second[0], 0, 1);
+            long double mean = get_mean(kv.second);
+            long double sum = mean * kv.second.size();
+            long double std = get_std(kv.second);
+
+            fprintf(stderr, "%s\t%.0Lf\t%.1Lf\t%u\n",
+                    kv.first.c_str(), sum, 100.0 * std / mean, 1);
 
         }
     }
