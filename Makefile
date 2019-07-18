@@ -2,7 +2,8 @@ DIR=$(shell pwd)
 # PAPI_LIB=$(WORK)/install/lib
 CC=g++
 CFLAGS=-Wall -std=c++11
-LDFLAGS=-fPIC -shared -L$(PAPI_LIB)
+LDFLAGS=-fPIC -shared -L/afs/cern.ch/work/k/kiliakis/install/lib 
+#-L$(PAPI_LIB)
 INCLUDE=-I$(DIR)/include
 LIB_SOURCE=$(DIR)/src/PAPIProf.cpp $(DIR)/src/PAPIProfMultiThread.cpp
 LIB=$(DIR)/lib/libpapiprof.so

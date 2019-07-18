@@ -64,7 +64,6 @@ public:
 };
 
 
-
 class PAPIProf : public PAPIProfBase
 {
 public:
