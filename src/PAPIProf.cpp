@@ -1,5 +1,6 @@
 #include "PAPIProf.h"
 #include <algorithm>
+#include <numeric>      // std::accumulate
 #include <cmath>
 #include <stack>
 #include <limits>
